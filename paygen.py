@@ -1,12 +1,18 @@
 import requests
 import os
 
+def get_currency(wallet_address):
+    return requests.get(f"https://api.xrpscan.com/api/v1/account/{wallet_address}/obligations?origin=https://xrpl.services").json()[0]["currency"]
+
 def get_payload(payload_url):
     args_dict = {}
     args = payload_url.split("?", 1)[1].split("&")
     for arg in args:
         arg_name, arg_value = arg.split("=", 1)
         args_dict[arg_name] = arg_value
+    
+    if not "currency" in args_dict: return
+    args_dict["currency"] = get_currency(args_dict["issuer"])
 
     payload = {
         "options": {
