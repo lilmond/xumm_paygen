@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>XUMM Paygen</title>
+        <style>
+            *{
+                margin: 0;
+                padding: 0;
+                border: 0;
+                outline: none;
+                font-family: sans-serif;
+            }
+            body{
+                text-align: center;
+                background: #424242;
+            }
+            .main-container{
+                margin: 0 auto;
+                margin-top: 30px;
+                max-width: 500px;
+                text-align: center;
+                padding: 0 15px;
+            }
+            .input-container{
+                margin-bottom: 25px;
+            }
+            .main-container h1{
+                color: white;
+                margin: 15px 0;
+                word-wrap: break-word;
+                user-select: none;
+            }
+            .input-container input[type=text]{
+                height: 30px;
+                width: calc(100% - 10px);
+                margin-bottom: 5px;
+                background: transparent;
+                border-bottom: 3px solid #fff;
+                color: white;
+                font-size: 100%;
+                font-weight: bold;
+                padding: 0 5px;
+            }
+            .input-container button{
+                height: 30px;
+                width: 100%;
+                background-color: #3f51b5;
+                border-radius: 1rem;
+                font-size: 100%;
+                font-weight: bold;
+                color: white;
+                cursor: pointer;
+                user-select: none;
+            }
+            .input-container button:active{
+                background-color: #2d3a85;
+            }
+            .logs-container p{
+                color: white;
+                text-align: left;
+                font-size: 20px;
+            }
+            .logs-container textarea{
+                width: calc(100% - 10px);
+                height: 150px;
+                padding: 5px;
+                font-size: 100%;
+                background-color: white;
+                resize: none;
+                color: black;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="main-container">
+            <h1>XUMM Paygen</h1>
+            <div class="input-container">
+                <input id="payload-url" type="text" placeholder="Payload URL"/>
+                <button id="submit-button">GENERATE</button>
+            </div>
+            <div class="logs-container">
+                <p>Logs:</p>
+                <textarea id="log-text" disabled></textarea>
+            </div>
+        </div>
+    </body>
+    <script type="text/javascript">
+        "use strict";
+        function logText(stringText) {
+            const logBox = document.getElementById("log-text");
+            const logText = `[${Date().split(" ")[4]}] ${stringText}\n`;
+
+            logBox.value += logText;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function getPayload(payloadUrl) {
+            const argsDict = {};
+            const argsList = payloadUrl.split("?")[1].split("&");
+            
+            argsList.forEach(item => {
+                const argName = item.split("=")[0];
+                const argValue = item.split("=")[1];
+
+                argsDict[argName] = argValue;
+            });
+            
+            const argsComplete = true;
+
+            ["issuer", "currency", "limit"].forEach(element => {
+                if ((element in argsDict) == false) {
+                    logText(`Invalid Payload URL. Args \"${element}\" is missing.`)
+                    argsComplete = false;
+                }
+            });
+
+            if (argsComplete == false) {
+                return;
+            }
+
+
+            const payloadJson = {"options":{"xrplAccount":null,"web":true,"referer":"https://xrpl.services/"},"payload":{"txjson":{"TransactionType":"TrustSet","Flags":131072,"LimitAmount":{"issuer":argsDict["issuer"],"currency":argsDict["currency"],"value":argsDict["limit"]}},"custom_meta":{"instruction":"- Issuer Address: rsoLo2S1kiGeCcn6hCUXVrCpGMWLrRrLZz\n- Token currency code: SOLO\n- Limit: 399189216.783312"},"options":{"expire":5}}}
+    
+            return payloadJson;
+        }
+
+        async function generateSignUrl(payloadJson) {
+            const response = await fetch("https://api.xumm.community/api/v1/platform/payload", {
+                method: "POST",
+                referrerPolicy: "no-referrer",
+                mode: "no-cors",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payloadJson),
+            });
+            return response.json();
+            /*const xHttp = new XMLHttpRequest();
+            xHttp.open("POST", "https://api.xumm.community/api/v1/platform/payload", true);
+            xHttp.setRequestHeader("Content-Type", "application/json");
+            
+            xHttp.onreadystatechange = () => {
+                console.log(xHttp.responseText);
+            }
+
+            xHttp.send(JSON.stringify(payloadJson));*/
+        }
+
+        document.getElementById("submit-button").onclick = async function() {
+            const payloadUrl = document.getElementById("payload-url").value.trim();
+
+            if (!payloadUrl) {
+                logText("Missing Payload URL.");
+                return;
+            }
+            
+            logText(`Generating Payload URL: ${payloadUrl}`);
+
+            let payloadDict = null;
+
+            try{
+                payloadDict = getPayload(payloadUrl);
+            } catch {
+                logText("Error generating payload.");
+                return;
+            }
+
+            logText("Successfully generated payload. Generating sign URL...");
+
+            const signUrl = await generateSignUrl(payloadDict);
+            console.log(signUrl);
+        }
+
+        window.onload = function(){
+            logText("Page successfully initialized.");
+        }
+    </script>
+</html>
